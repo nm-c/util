@@ -185,6 +185,26 @@ if [ -n "$ROLE_ARN" ]; then
 fi
 
 # 필요한 권한 테스트
+# AWS CLI 설치 및 설정 확인
+echo -e "\n${YELLOW}AWS CLI 확인 중...${NC}"
+if ! command -v aws &> /dev/null; then
+    echo -e "${RED}AWS CLI가 설치되어 있지 않습니다.${NC}"
+    exit 1
+fi
+
+AWS_VERSION=$(aws --version 2>&1)
+echo -e "${GREEN}AWS CLI 버전: ${AWS_VERSION}${NC}"
+
+# 기본 자격 증명 확인
+CALLER_IDENTITY=$(aws sts get-caller-identity --region $REGION 2>&1)
+if echo "$CALLER_IDENTITY" | grep -q "Unable to locate credentials"; then
+    echo -e "${RED}AWS 자격 증명을 확인할 수 없습니다.${NC}"
+    echo "Instance Profile 확인 중..."
+    PROFILE_INFO=$(curl -s http://169.254.169.254/latest/meta-data/iam/info)
+    echo "$PROFILE_INFO"
+    exit 1
+fi
+
 echo -e "\n${YELLOW}필요한 권한 테스트 중...${NC}"
 
 # DescribeVolumes 권한 테스트
@@ -205,14 +225,20 @@ echo -e "${YELLOW}※ ec2:ModifyVolume 권한은 실행 시 확인됩니다${NC}
 
 # 모든 EBS 볼륨 가져오기
 echo -e "\n${YELLOW}EBS 볼륨 정보 가져오는 중...${NC}"
+ERROR_MSG=$(mktemp)
 VOLUMES=$(aws ec2 describe-volumes \
     --region $REGION \
     --filters "Name=attachment.instance-id,Values=$INSTANCE_ID" \
     --query "Volumes[*].[VolumeId,Size,Attachments[0].Device]" \
-    --output text 2>/dev/null)
+    --output text 2>"$ERROR_MSG")
 
 if [ -z "$VOLUMES" ]; then
     echo -e "${RED}EBS 볼륨 정보를 가져올 수 없습니다.${NC}"
+    if [ -s "$ERROR_MSG" ]; then
+        echo -e "${RED}에러 내용:${NC}"
+        cat "$ERROR_MSG"
+    fi
+    rm -f "$ERROR_MSG"
     echo ""
     echo "문제 해결:"
     echo "1. IAM 역할에 다음 권한 추가:"
