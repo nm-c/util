@@ -45,6 +45,20 @@ fi
 install_aws_cli() {
     echo -e "${YELLOW}AWS CLI 설치 중...${NC}"
 
+    # unzip 설치 확인 및 설치
+    if ! command -v unzip &> /dev/null; then
+        echo -e "${YELLOW}unzip 설치 중...${NC}"
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y unzip
+
+        if ! command -v unzip &> /dev/null; then
+            echo -e "${RED}unzip 설치 실패. 수동 설치 후 다시 시도하세요.${NC}"
+            return 1
+        fi
+        echo -e "${GREEN}unzip 설치 완료${NC}"
+    fi
+
     # 아키텍처 감지
     ARCH=$(uname -m)
     if [ "$ARCH" = "aarch64" ]; then
