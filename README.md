@@ -8,3 +8,4 @@ AWS EC2 인스턴스에서 EBS 볼륨을 자동으로 확장해 주는 스크립
 
 ```bash
 curl -fsSL 'https://github.com/nm-c/util/raw/refs/heads/main/expand_disk.sh' | sudo bash -
+```
